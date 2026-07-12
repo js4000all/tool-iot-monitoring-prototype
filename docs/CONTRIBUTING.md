@@ -2,7 +2,13 @@
 
 このリポジトリへの変更は、小さく、意図が明確で、検証可能であることを重視します。
 
-本ガイドは、人間の開発者とAIエージェントの双方を対象とします。システム全体の目的、MVPスコープ、アーキテクチャ上の設計判断については、先に[README.md](../README.md)を参照してください。
+本ガイドは、人間の開発者と AI エージェントの双方を対象とします。システム全体の目的、MVP スコープ、アーキテクチャ上の設計判断については、先に以下を参照してください。
+
+- [../README.md](../README.md)
+- [MVP.md](MVP.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+
+AI エージェント固有の作業ルールは [../AGENTS.md](../AGENTS.md) を参照してください。
 
 ---
 
@@ -10,14 +16,14 @@
 
 - 読みやすさを短さより優先する
 - 変更範囲を必要最小限にする
-- MVPに不要な機能を先回りして実装しない
+- MVP に不要な機能を先回りして実装しない
 - 既存の責務境界を尊重する
-- 外部I/O、永続化、通信、データ変換を可能な範囲で分離する
+- 外部 I/O、永続化、通信、データ変換を可能な範囲で分離する
 - エラーを握りつぶさない
 - テストできない設計を避ける
 - 抽象化は、実際の変更軸または複数実装がある箇所に置く
-- 将来使うかもしれないという理由だけでinterfaceや汎用基盤を作らない
-- Composition Rootを依存関係の組み立て場所として維持する
+- 将来使うかもしれないという理由だけで interface や汎用基盤を作らない
+- Composition Root を依存関係の組み立て場所として維持する
 
 ---
 
@@ -25,30 +31,30 @@
 
 変更を始める前に、最低限以下を整理してください。
 
-1. 変更対象はEdge Agent、Cloud Ingestor、共有プロトコルのどれか
+1. 変更対象は Edge Agent、Cloud Ingestor、共有プロトコルのどれか
 2. 変更によってデータがどの経路を通るか
 3. 永続化される地点はどこか
 4. 障害時に失われるものと残るものは何か
-5. Protobuf互換性への影響があるか
-6. Composition Rootの変更が必要か
-7. MVPスコープ外へ踏み込んでいないか
+5. Protobuf 互換性への影響があるか
+6. Composition Root の変更が必要か
+7. MVP スコープ外へ踏み込んでいないか
 
 大きな変更は、実装前に小さな単位へ分けてください。
 
 例:
 
 ```text
-1. Protobuf定義を追加
-2. Edge側の生成処理を追加
+1. Protobuf 定義を追加
+2. Edge 側の生成処理を追加
 3. 永続キューへ保存
-4. publish処理へ接続
-5. Cloud側のdecode処理を追加
-6. E2Eテストを追加
+4. publish 処理へ接続
+5. Cloud 側の decode 処理を追加
+6. E2E テストを追加
 ```
 
 ---
 
-## 3. Goコーディング規約
+## 3. Go コーディング規約
 
 ### 3.1 フォーマットと静的検査
 
@@ -60,21 +66,21 @@ go test ./...
 go vet ./...
 ```
 
-CIに追加のチェックがある場合は、それも実行してください。
+CI に追加のチェックがある場合は、それも実行してください。
 
-### 3.2 package設計
+### 3.2 package 設計
 
-- package名は短く、単数形を基本とする
-- `common`、`util`、`helper`のような広すぎるpackageを避ける
-- Edge固有とCloud固有の処理を安易に共有packageへ移さない
+- package 名は短く、単数形を基本とする
+- `common`、`util`、`helper` のような広すぎる package を避ける
+- Edge 固有と Cloud 固有の処理を安易に共有 package へ移さない
 - 共有するのは、本当に同じ契約と意味を持つものに限定する
-- `internal`境界を維持する
+- `internal` 境界を維持する
 
 ### 3.3 interface
 
-- interfaceは利用側のpackageで定義することを基本とする
-- 実装が1つしかなく、差し替え理由もテスト上の必要性もない場合は、無理にinterfaceを作らない
-- interfaceは小さく、利用側が必要とする操作だけを持たせる
+- interface は利用側の package で定義することを基本とする
+- 実装が 1 つしかなく、差し替え理由もテスト上の必要性もない場合は、無理に interface を作らない
+- interface は小さく、利用側が必要とする操作だけを持たせる
 - 実装詳細を漏らす戻り値や引数を避ける
 - 同じメソッド名でも成功条件が異なる実装を混在させない
 
@@ -86,49 +92,49 @@ type TelemetryQueue interface {
 }
 ```
 
-`Enqueue`成功は、永続キューへの保存完了を意味します。MQTT publish完了は意味しません。
+`Enqueue` 成功は、永続キューへの保存完了を意味します。MQTT publish 完了は意味しません。
 
-### 3.4 constructorと依存関係
+### 3.4 constructor と依存関係
 
-- 必要な依存はconstructorで受け取る
+- 必要な依存は constructor で受け取る
 - 不完全な状態のオブジェクトを返さない
-- 起動後に変更しない依存はconstructorで確定する
-- HandlerやRouteの登録はconstructorで完了させる
+- 起動後に変更しない依存は constructor で確定する
+- Handler や Route の登録は constructor で完了させる
 - 実行時に依存関係を追加・差し替えしない
-- 業務上の初期化を`init()`へ置かない
+- 業務上の初期化を `init()` へ置かない
 
 ### 3.5 context
 
-- `context.Context`は第1引数とする
-- `context.Context`をstructへ保存しない
-- timeoutやcancelは呼び出し元から伝播させる
-- 長時間処理やgoroutineはcontext終了を監視する
+- `context.Context` は第 1 引数とする
+- `context.Context` を struct へ保存しない
+- timeout や cancel は呼び出し元から伝播させる
+- 長時間処理や goroutine は context 終了を監視する
 
-### 3.6 goroutineとchannel
+### 3.6 goroutine と channel
 
-- goroutineを起動する箇所では、停止条件を明確にする
+- goroutine を起動する箇所では、停止条件を明確にする
 - エラーの伝播方法を明確にする
-- goroutineを無制限に生成しない
-- channelの所有者を明確にする
-- channelをcloseする責任は、原則として生成側が持つ
-- 同一IPへのTCPリクエスト直列化を壊さない
-- 異なるIP間の並列実行を不要に阻害しない
+- goroutine を無制限に生成しない
+- channel の所有者を明確にする
+- channel を close する責任は、原則として生成側が持つ
+- 同一 IP への TCP リクエスト直列化を壊さない
+- 異なる IP 間の並列実行を不要に阻害しない
 
-### 3.7 timeoutとretry
+### 3.7 timeout と retry
 
-- timeoutをコードへ散在させない
-- timeoutは設定または呼び出し元から受け取る
-- MVPで不要な複雑なRetry Policyを作らない
-- retryを追加する場合は、重複実行の影響を確認する
-- TCP、MQTT、永続化のretry責務を混在させない
+- timeout をコードへ散在させない
+- timeout は設定または呼び出し元から受け取る
+- MVP で不要な複雑な Retry Policy を作らない
+- retry を追加する場合は、重複実行の影響を確認する
+- TCP、MQTT、永続化の retry 責務を混在させない
 
 ### 3.8 error
 
 - エラーを握りつぶさない
 - エラーには処理対象を特定できる文脈を付ける
-- `%w`でラップし、原因判定を妨げない
+- `%w` でラップし、原因判定を妨げない
 - 呼び出し元が判断すべきエラーをログだけで終わらせない
-- panicは継続不能な初期化失敗または不変条件違反に限定する
+- panic は継続不能な初期化失敗または不変条件違反に限定する
 
 例:
 
@@ -193,92 +199,31 @@ HTTP
 
 ## 5. アーキテクチャ上の規約
 
-### 5.1 TCPWorker
+詳細なデータフローと責務境界は [ARCHITECTURE.md](ARCHITECTURE.md) を正とします。実装時は特に以下を守ってください。
 
-TCPWorkerは以下に責任を持ちます。
-
-- TCPリクエストの実行
-- timeoutの適用
-- TCPResultの生成
-- ResultProcessorへの受け渡し
-
-TCPWorkerは以下を知りません。
-
-- テレメトリのProtobuf形式
-- MQTTトピック
-- SQLiteスキーマ
-- クラウド側の保存先
-- command固有のAPIセッション
-
-### 5.2 ResultProcessor
-
-ResultProcessorは結果処理の共通入口です。
-
-- ResultRouteから適切なResultHandlerへ委譲する
-- Handlerの具体実装を呼び出し元から隠蔽する
-- 共通ログ、メトリクス、エラー整形を必要に応じて扱う
-- 用途固有の変換処理を自身へ追加しない
-
-ResultProcessorへ`switch`や`if`による用途別処理が増え始めた場合は、ResultHandlerへ分離してください。
-
-### 5.3 ResultHandler
-
-ResultHandlerは以下に責任を持ちます。
-
-- CommandとTCPResultの解釈
-- 用途別メッセージの生成
-- 対応するQueueへの投入
-
-ResultHandlerは以下を扱いません。
-
-- MQTT接続管理
-- 再接続
-- バッチ送信
-- 圧縮
-- publish retry
-- publish成功後の削除
-
-### 5.4 QueueとPublish Worker
-
+- TCPWorker に MQTT、Protobuf、SQLite、テレメトリ保存、Cloud 側の事情を持ち込まない
+- ResultProcessor は結果処理の共通入口とし、用途固有処理は ResultHandler へ置く
+- ResultHandler は用途別メッセージ生成と Queue 投入までを担当する
 - 取得済みテレメトリは永続化してからバッチ化する
-- publish失敗時はレコードを残す
-- publish成功確認後に対象レコードを削除する
-- 永続化成功とpublish成功を混同しない
-- MVPでは汎用分散キューを作らない
-- MVPではTelemetryQueueに必要な操作だけを実装する
-
-### 5.5 Cloud MetricSink
-
-Cloud Ingestorは、decodeしたTelemetryItemをMetricSinkへ渡します。
-
-MVP実装は`StdoutMetricSink`です。
-
-将来のRDBやOpenTelemetry対応は、MetricSinkの実装追加として行います。Cloud IngestorのMQTT受信処理へ保存先固有ロジックを直接追加しないでください。
+- publish 失敗時はレコードを残す
+- publish 成功確認後に対象レコードを削除する
+- Cloud Ingestor の保存先固有ロジックは MetricSink 実装へ分離する
 
 ---
 
-## 6. Protobuf規約
+## 6. Protobuf 規約
 
-- MQTT payloadはProtobufを使用する
+- MQTT payload は Protobuf を使用する
 - 独自バイナリヘッダーを作らない
-- 圧縮状態はProtobuf Envelopeで表現する
+- 圧縮状態は Protobuf Envelope で表現する
 - 既存フィールド番号を変更・再利用しない
-- 削除したフィールド番号と名前は`reserved`にする
-- enumの`0`は安全なデフォルト値にする
-- 未知のenum値を無条件に正常扱いしない
-- EdgeとCloudの双方でencode/decodeテストを行う
-- 生成コードは`.proto`変更と同じ変更セットに含める
+- 削除したフィールド番号と名前は `reserved` にする
+- enum の `0` は安全なデフォルト値にする
+- 未知の enum 値を無条件に正常扱いしない
+- Edge と Cloud の双方で encode / decode テストを行う
+- 生成コードは `.proto` 変更と同じ変更セットに含める
 
-例:
-
-```proto
-enum Compression {
-  COMPRESSION_NONE = 0;
-  COMPRESSION_ZSTD = 1;
-}
-```
-
-MVPでは`COMPRESSION_NONE`のみを使用します。
+MVP では `COMPRESSION_NONE` のみを使用します。
 
 ---
 
@@ -301,13 +246,13 @@ batch_size
 
 方針:
 
-- payload全体を通常ログへ出さない
+- payload 全体を通常ログへ出さない
 - 認証情報や秘密情報を出さない
-- TCPレスポンスの生データはdebugレベルまたは明示設定時のみ出す
+- TCP レスポンスの生データは debug レベルまたは明示設定時のみ出す
 - 同じエラーを複数階層で重複してログ出力しない
 - 原則として、エラーを最終的に処理する境界でログを出す
-- recover可能な失敗と致命的な失敗を区別する
-- MQTT切断中の連続エラーでログを過剰出力しない
+- recover 可能な失敗と致命的な失敗を区別する
+- MQTT 切断中の連続エラーでログを過剰出力しない
 
 ---
 
@@ -316,9 +261,9 @@ batch_size
 - 必須設定の欠落は起動時に失敗させる
 - IP、ポート、duration、件数などは起動時に検証する
 - 不正な設定を暗黙のデフォルトへ置き換えない
-- デフォルト値は1か所に集約する
+- デフォルト値は 1 か所に集約する
 - 設定例を変更した場合はドキュメントも更新する
-- MVPでは動的リロードを実装しない
+- MVP では動的リロードを実装しない
 - 秘密情報をリポジトリへコミットしない
 - 環境変数と設定ファイルの優先順位を明示する
 
@@ -329,8 +274,8 @@ batch_size
 ### 9.1 基本方針
 
 - バグ修正には可能な限り再現テストを追加する
-- private実装ではなく、公開契約または振る舞いをテストする
-- 実時間に依存する長いsleepを避ける
+- private 実装ではなく、公開契約または振る舞いをテストする
+- 実時間に依存する長い sleep を避ける
 - 偶然通る並行処理テストを避ける
 - 外部環境依存テストと単体テストを分離する
 
@@ -338,40 +283,38 @@ batch_size
 
 最低限、以下を検証します。
 
-- 同一IPへのTCPリクエストが直列実行される
-- 異なるIPへのTCPリクエストが並列実行される
-- TCP成功結果がTelemetryItemへ変換される
-- TCP失敗時の挙動が明確である
-- SQLiteへテレメトリが永続化される
-- publish失敗時にレコードが残る
-- publish成功時に対象レコードが削除される
+- 同一 IP への TCP リクエストが直列実行される
+- 異なる IP への TCP リクエストが並列実行される
+- TCP 成功結果が TelemetryItem へ変換される
+- TCP 失敗時の挙動が明確である
+- SQLite へテレメトリが永続化される
+- publish 失敗時にレコードが残る
+- publish 成功時に対象レコードが削除される
 - 最大件数でバッチ送信される
 - 最大待機時間でバッチ送信される
 
-TCPテストには、ローカルの疑似TCPサーバーを使用してください。
-
-SQLiteテストには、一時ディレクトリまたは一時DBを使用してください。
+TCP テストには、ローカルの疑似 TCP サーバーを使用してください。SQLite テストには、一時ディレクトリまたは一時 DB を使用してください。
 
 ### 9.3 Cloud Ingestor
 
 最低限、以下を検証します。
 
-- TelemetryEnvelopeをdecodeできる
-- `COMPRESSION_NONE`を処理できる
-- 未対応compressionを安全に拒否する
-- TelemetryBatchをdecodeできる
-- 各TelemetryItemをMetricSinkへ渡せる
-- StdoutMetricSinkが期待形式で出力する
+- TelemetryEnvelope を decode できる
+- `COMPRESSION_NONE` を処理できる
+- 未対応 compression を安全に拒否する
+- TelemetryBatch を decode できる
+- 各 TelemetryItem を MetricSink へ渡せる
+- StdoutMetricSink が期待形式で出力する
 
 ### 9.4 E2E
 
-MQTTブローカーを利用できる環境では、以下を検証します。
+MQTT ブローカーを利用できる環境では、以下を検証します。
 
-- EdgeからCloudまでテレメトリが到達する
-- MQTT停止中もSQLiteへデータが残る
-- MQTT復旧後に蓄積データが送信される
+- Edge から Cloud までテレメトリが到達する
+- MQTT 停止中も SQLite へデータが残る
+- MQTT 復旧後に蓄積データが送信される
 
-実行環境の制約でE2Eを実行できない場合は、未実施理由と必要な環境を明記してください。
+実行環境の制約で E2E を実行できない場合は、未実施理由と必要な環境を明記してください。
 
 ---
 
@@ -379,18 +322,18 @@ MQTTブローカーを利用できる環境では、以下を検証します。
 
 ### 10.1 基本方針
 
-- 1コミットは1つの意図に集中させる
+- 1 コミットは 1 つの意図に集中させる
 - リファクタリングと機能変更を可能な範囲で分ける
 - 無関係な整形変更を混ぜない
 - 動作しない中間状態を原則としてコミットしない
 - 未追跡ファイルや他者の変更を勝手に削除しない
 - ユーザーの明示なしに履歴を書き換えない
-- `git push --force`を行わない
-- 他者のコミットを勝手にrebase、squash、amendしない
+- `git push --force` を行わない
+- 他者のコミットを勝手に rebase、squash、amend しない
 
 ### 10.2 コミットメッセージ
 
-Conventional Commitsに近い形式を使用します。
+Conventional Commits に近い形式を使用します。
 
 ```text
 <type>(<scope>): <summary>
@@ -407,7 +350,7 @@ docs(repo): add contribution guidelines
 build(proto): regenerate telemetry protobuf code
 ```
 
-使用するtype:
+使用する type:
 
 ```text
 feat      新機能
@@ -416,11 +359,11 @@ refactor  振る舞いを変えない構造改善
 test      テスト追加・修正
 docs      ドキュメント
 build     ビルド、依存、生成コード
-ci        CI設定
+ci        CI 設定
 chore     その他の保守作業
 ```
 
-推奨scope:
+推奨 scope:
 
 ```text
 edge
@@ -432,17 +375,17 @@ repo
 
 ルール:
 
-- summaryは簡潔にする
+- summary は簡潔にする
 - 末尾に句点を付けない
-- `update files`、`fix issue`のような曖昧な表現を避ける
-- 破壊的変更がある場合は本文に`BREAKING CHANGE:`を記載する
+- `update files`、`fix issue` のような曖昧な表現を避ける
+- 破壊的変更がある場合は本文に `BREAKING CHANGE:` を記載する
 - 変更理由が自明でない場合は本文へ背景を書く
 
 ---
 
-## 11. Pull Request規約
+## 11. Pull Request 規約
 
-Pull Requestには、最低限以下を記載してください。
+Pull Request には、最低限以下を記載してください。
 
 ```text
 ## Summary
@@ -468,11 +411,11 @@ Pull Requestには、最低限以下を記載してください。
 
 レビューしやすくするため、可能な範囲で以下を守ってください。
 
-- PRを小さく保つ
+- PR を小さく保つ
 - 生成コードだけの巨大差分を説明する
 - 無関係なリネームを混ぜない
 - 設計変更と単純な機能追加を分ける
-- READMEや設定例への影響を反映する
+- README や設定例への影響を反映する
 
 ---
 
@@ -488,28 +431,26 @@ Pull Requestには、最低限以下を記載してください。
 - 残っている制約または既知の課題
 ```
 
-コミットを作成した場合は、コミットハッシュとコミットメッセージも記載してください。
-
-未実施のテストを成功扱いにしないでください。
+コミットを作成した場合は、コミットハッシュとコミットメッセージも記載してください。未実施のテストを成功扱いにしないでください。
 
 ---
 
 ## 13. 避けるべき過剰設計
 
-MVPでは、明確な必要性がない限り以下を導入しません。
+MVP では、明確な必要性がない限り以下を導入しません。
 
-- 汎用MessageBus
-- 汎用Workflow Engine
-- 動的Plugin機構
-- Handlerの実行時追加
-- 動的DIコンテナ
+- 汎用 MessageBus
+- 汎用 Workflow Engine
+- 動的 Plugin 機構
+- Handler の実行時追加
+- 動的 DI コンテナ
 - 独自シリアライズ形式
 - 汎用分散キュー
-- 複雑なRetry Policy階層
+- 複雑な Retry Policy 階層
 - 複数圧縮方式の自動選択
-- commandを想定した未使用コード
-- 利用箇所のないinterface
-- 将来用途だけを理由とした共有package
+- command を想定した未使用コード
+- 利用箇所のない interface
+- 将来用途だけを理由とした共有 package
 
 抽象化は、確認できた変更軸に対して行ってください。
 
@@ -520,12 +461,12 @@ MVPでは、明確な必要性がない限り以下を導入しません。
 変更は、該当する範囲で以下を満たした時点で完了とします。
 
 - コードがビルドできる
-- `gofmt`が適用されている
+- `gofmt` が適用されている
 - 関連する単体テストが通る
-- `go vet ./...`で新たな問題がない
+- `go vet ./...` で新たな問題がない
 - エラー処理が追加されている
 - 設定変更が検証されている
-- Protobuf互換性が維持されている
+- Protobuf 互換性が維持されている
 - 必要な生成コードが更新されている
 - 関連ドキュメントが更新されている
 - 実行できなかった検証が明記されている
